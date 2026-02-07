@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<title>Darts Torna</title>
+<style>
+body{font-family:Arial;background:#111;color:#eee;padding:15px}
+nav button{margin:3px;padding:8px}
+button{padding:6px;margin:4px}
+table{width:100%;border-collapse:collapse;margin:6px 0}
+th,td{border:1px solid #444;padding:6px;text-align:center}
+input{width:40px}
+.blue{color:#00f;font-weight:bold}
+.hidden{display:none}
+.round{margin-top:20px;padding:10px;border:1px solid #333}
+</style>
+</head>
+<body>
+
+<h1>🎯 Darts Torna</h1>
+
+<nav>
+<button onclick="show('meccsek')">Meccsek</button>
+<button onclick="show('tabla')">Tabella</button>
+<button onclick="show('eredm')">Eredmények</button>
+<button onclick="newTournament()">🔄 Új torna</button>
+</nav>
+
+<div id="meccsek"></div>
+<div id="tabla" class="hidden"></div>
+<div id="eredm" class="hidden"></div>
+
+<script>
+// ================== ÁLLAPOT ==================
+let stage = 1;
+let players = [];
+let stats = {};
+let results = [];
+let saved = new Set();
+let rounds = [];
+
+// ================== 1. FORDULÓ – 6 KÖR ==================
+const stage1Rounds = [
+ [["Henc Zsóka","Henc Bernát"],["Henc Dénes","Henc Krisztián"]],
+ [["Henc Krisztián","Henc Zsóka"],["Henc Bernát","Henc Dénes"]],
+ [["Henc Zsóka","Henc Dénes"],["Henc Bernát","Henc Krisztián"]],
+ [["Henc Zsóka","Henc Bernát"],["Henc Dénes","Henc Krisztián"]],
+ [["Henc Krisztián","Henc Zsóka"],["Henc Bernát","Henc Dénes"]],
+ [["Henc Zsóka","Henc Dénes"],["Henc Bernát","Henc Krisztián"]]
+];
+
+// ================== MENTÉS SAFARIBA ==================
+function saveState(){
+ localStorage.setItem("dartsState", JSON.stringify({
+  stage, players, stats, results, rounds, saved:[...saved]
+ }));
+}
+
+function loadState(){
+ let d = localStorage.getItem("dartsState");
+ if(!d) return false;
+ let s = JSON.parse(d);
+ stage=s.stage;
+ players=s.players;
+ stats=s.stats;
+ results=s.results;
+ rounds=s.rounds;
+ saved=new Set(s.saved);
+ return true;
+}
+
+// ================== INIT ==================
+function initStats(){
+ stats={};
+ players.forEach(p=>stats[p]={pont:0,plus:0,minus:0});
+ saved.clear();
+ saveState();
+}
+
+// ================== FÜLEK ==================
+function show(id){
+ ["meccsek","tabla","eredm"].forEach(x=>
+  document.getElementById(x).classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+}
+
+// ================== RAJZOLÁS ==================
+function drawAll(){
+ drawMatches();
+ drawTable();
+ drawResults();
+}
+
+// ================== MECCSEK ==================
+function drawMatches(){
+ let html="";
+ rounds.forEach((round,r)=>{
+  html+=`<div class="round"><h3>${r+1}. kör</h3><table>`;
+  html+=`<tr><th>Játékos</th><th>Leg</th><th>Leg</th><th>Játékos</th><th></th></tr>`;
+  round.forEach((m,i)=>{
+   let id=`${stage}-${r}-${i}`;
+   html+=`
+   <tr>
+    <td>${m[0]}</td>
+    <td><input id="a${id}"></td>
+    <td><input id="b${id}"></td>
+    <td>${m[1]}</td>
+    <td><button onclick="saveMatch('${id}','${m[0]}','${m[1]}')">Ment</button></td>
+   </tr>`;
+  });
+  html+="</table></div>";
+ });
+ document.getElementById("meccsek").innerHTML=html;
+}
+
+// ================== MECCS MENTÉS ==================
+function saveMatch(id,p1,p2){
+ if(saved.has(id)) return;
+
+ let a=parseInt(document.getElementById("a"+id).value);
+ let b=parseInt(document.getElementById("b"+id).value);
+ if(isNaN(a)||isNaN(b)) return;
+
+ stats[p1].plus+=a; stats[p1].minus+=b;
+ stats[p2].plus+=b; stats[p2].minus+=a;
+ if(a>b) stats[p1].pont+=3;
+ else stats[p2].pont+=3;
+
+ results.push(`${p1} ${a} - ${b} ${p2}`);
+ saved.add(id);
+
+ saveState();
+ drawTable();
+ drawResults();
+
+ let total=rounds.reduce((s,r)=>s+r.length,0);
+ if(saved.size===total) nextStage();
+}
+
+// ================== TABELLÁK ==================
+function drawTable(){
+ let order=[...players].sort((a,b)=>{
+  if(stats[b].pont!==stats[a].pont)
+   return stats[b].pont-stats[a].pont;
+  return (stats[b].plus-stats[b].minus)-(stats[a].plus-stats[a].minus);
+ });
+
+ let html="<h2>Tabella</h2><table><tr><th>#</th><th>Név</th><th>Pont</th><th>Legkül.</th></tr>";
+ order.forEach((p,i)=>{
+  let blue=(stage===1 && i<3)||(stage===2 && i<2);
+  html+=`
+  <tr>
+   <td class="${blue?'blue':''}">${i+1}</td>
+   <td>${p}</td>
+   <td>${stats[p].pont}</td>
+   <td>${stats[p].plus-stats[p].minus}</td>
+  </tr>`;
+ });
+ html+="</table>";
+ document.getElementById("tabla").innerHTML=html;
+}
+
+// ================== EREDMÉNYEK ==================
+function drawResults(){
+ document.getElementById("eredm").innerHTML=
+ "<h2>Eredmények</h2>"+results.map(r=>"<p>"+r+"</p>").join("");
+}
+
+// ================== KÖVETKEZŐ SZAKASZ ==================
+function nextStage(){
+ let sorted=[...players].sort((a,b)=>{
+  if(stats[b].pont!==stats[a].pont)
+   return stats[b].pont-stats[a].pont;
+  return (stats[b].plus-stats[b].minus)-(stats[a].plus-stats[a].minus);
+ });
+
+ // 2. kör – TOP 3, 4 körmérkőzés
+ if(stage===1){
+  stage=2;
+  players=sorted.slice(0,3);
+  rounds=Array(4).fill().map(()=>[
+   [players[0],players[1]],
+   [players[0],players[2]],
+   [players[1],players[2]]
+  ]);
+  initStats();
+  drawAll();
+  return;
+ }
+
+ // döntő – TOP 2
+ if(stage===2){
+  stage=3;
+  players=sorted.slice(0,2);
+  rounds=[ [[players[0],players[1]]] ];
+  initStats();
+  drawAll();
+ }
+}
+
+// ================== ÚJ TORNA ==================
+function newTournament(){
+ if(!confirm("Biztos új tornát indítasz? Minden adat törlődik!")) return;
+ localStorage.removeItem("dartsState");
+ stage=1;
+ players=["Henc Krisztián","Henc Bernát","Henc Zsóka","Henc Dénes"];
+ rounds=stage1Rounds;
+ results=[];
+ initStats();
+ drawAll();
+ show("meccsek");
+}
+
+// ================== START – SOHA NEM RESETEL ==================
+const loaded = loadState();
+
+if(!loaded){
+ stage=1;
+ players=["Henc Krisztián","Henc Bernát","Henc Zsóka","Henc Dénes"];
+ rounds=stage1Rounds;
+ initStats();
+}
+
+drawAll();
+</script>
+
+</body>
+</html>
