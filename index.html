@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<title>Darts Torna</title>
+<style>
+body { font-family: Arial; padding: 10px; }
+button { margin: 5px; }
+.tab { display: none; }
+.tab.active { display: block; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+td, th { border: 1px solid #aaa; padding: 5px; text-align: center; }
+.blue { color: blue; font-weight: bold; }
+.round { margin-top: 15px; border-top: 2px solid #000; padding-top: 5px; }
+</style>
+</head>
+<body>
+
+<h2>Darts Torna</h2>
+
+<button onclick="showTab('meccsek')">Meccsek</button>
+<button onclick="showTab('tabella')">Tabella</button>
+<button onclick="showTab('eredmenyek')">Eredmények</button>
+
+<div id="meccsek" class="tab"></div>
+<div id="tabella" class="tab"></div>
+<div id="eredmenyek" class="tab"></div>
+
+<script>
+const STORAGE_KEY = "darts_torna";
+
+const defaultState = {
+  stage: 1,
+  players: ["Henc Krisztián","Henc Bernát","Henc Zsóka","Henc Dénes"],
+  matches: [],
+  results: [],
+  table: {}
+};
+
+function loadState(){
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved) return JSON.parse(saved);
+  const s = structuredClone(defaultState);
+  initTable(s.players, s);
+  generateStage1(s);
+  saveState(s);
+  return s;
+}
+
+function saveState(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+let state = loadState();
+
+function initTable(players, s){
+  s.table = {};
+  players.forEach(p=>{
+    s.table[p]={pts:0, diff:0};
+  });
+}
+
+function generateStage1(s){
+  const p = s.players;
+  const rounds = [
+    [[p[0],p[1]],[p[2],p[3]]],
+    [[p[0],p[2]],[p[1],p[3]]],
+    [[p[0],p[3]],[p[1],p[2]]],
+    [[p[1],p[0]],[p[3],p[2]]],
+    [[p[2],p[0]],[p[3],p[1]]],
+    [[p[3],p[0]],[p[2],p[1]]],
+  ];
+  s.matches = [];
+  rounds.forEach((r,i)=>{
+    r.forEach(m=>{
+      s.matches.push({round:i+1,a:m[0],b:m[1],aLeg:null,bLeg:null});
+    });
+  });
+}
+
+function generateStage2(s){
+  s.stage=2;
+  const sorted = sortTable(s).slice(0,3).map(x=>x.name);
+  initTable(sorted,s);
+  s.matches=[];
+  for(let i=0;i<sorted.length;i++){
+    for(let j=i+1;j<sorted.length;j++){
+      s.matches.push({round:1,a:sorted[i],b:sorted[j],aLeg:null,bLeg:null});
+    }
+  }
+}
+
+function generateFinal(s){
+  s.stage=3;
+  const sorted = sortTable(s).slice(0,2).map(x=>x.name);
+  s.matches=[{round:1,a:sorted[0],b:sorted[1],aLeg:null,bLeg:null}];
+}
+
+function sortTable(s){
+  return Object.entries(s.table)
+    .map(([name,v])=>({name,pts:v.pts,diff:v.diff}))
+    .sort((a,b)=>b.pts-a.pts || b.diff-a.diff);
+}
+
+function render(){
+  renderMatches();
+  renderTable();
+  renderResults();
+}
+
+function renderMatches(){
+  const d=document.getElementById("meccsek");
+  d.innerHTML="";
+  let byRound={};
+  state.matches.forEach(m=>{
+    byRound[m.round]=byRound[m.round]||[];
+    byRound[m.round].push(m);
+  });
+  Object.keys(byRound).forEach(r=>{
+    const div=document.createElement("div");
+    div.className="round";
+    div.innerHTML="<b>"+r+". kör</b><br>";
+    byRound[r].forEach(m=>{
+      const id=state.matches.indexOf(m);
+      div.innerHTML+=`
+        ${m.a} 
+        <input type="number" min="0" max="10" value="${m.aLeg??""}" 
+          onchange="setResult(${id},this.value,true)">
+        -
+        <input type="number" min="0" max="10" value="${m.bLeg??""}" 
+          onchange="setResult(${id},this.value,false)">
+        ${m.b}<br>`;
+    });
+    d.appendChild(div);
+  });
+}
+
+function setResult(i,val,isA){
+  const m=state.matches[i];
+  if(isA) m.aLeg=parseInt(val); else m.bLeg=parseInt(val);
+  if(m.aLeg!=null && m.bLeg!=null){
+    const diff=m.aLeg-m.bLeg;
+    state.table[m.a].diff+=diff;
+    state.table[m.b].diff-=diff;
+    if(diff>0) state.table[m.a].pts+=3;
+    else state.table[m.b].pts+=3;
+    state.results.push(`${m.a} ${m.aLeg}-${m.bLeg} ${m.b}`);
+    checkProgress();
+    saveState(state);
+    render();
+  }
+}
+
+function checkProgress(){
+  if(state.matches.every(m=>m.aLeg!=null)){
+    if(state.stage===1) generateStage2(state);
+    else if(state.stage===2) generateFinal(state);
+  }
+}
+
+function renderTable(){
+  const d=document.getElementById("tabella");
+  const s=sortTable(state);
+  let html="<table><tr><th>#</th><th>Név</th><th>Pont</th><th>Leg</th></tr>";
+  s.forEach((p,i)=>{
+    const blue = (state.stage===1 && i<3) || (state.stage===2 && i<2);
+    html+=`<tr>
+      <td class="${blue?"blue":""}">${i+1}</td>
+      <td>${p.name}</td>
+      <td>${p.pts}</td>
+      <td>${p.diff}</td></tr>`;
+  });
+  html+="</table>";
+  d.innerHTML=html;
+}
+
+function renderResults(){
+  document.getElementById("eredmenyek").innerHTML=
+    state.results.join("<br>");
+}
+
+function showTab(id){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+showTab("meccsek");
+render();
+</script>
+</body>
+</html>
