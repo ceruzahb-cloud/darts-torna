@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Converter Pro</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+}
+
+body {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at top, #1f1f2e, #0b0b12);
+    overflow: hidden;
+}
+
+/* háttér glow */
+.glow {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: #ff2e63;
+    filter: blur(150px);
+    opacity: 0.3;
+    top: -100px;
+    left: -100px;
+}
+
+.glow2 {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: #08d9d6;
+    filter: blur(150px);
+    opacity: 0.2;
+    bottom: -120px;
+    right: -120px;
+}
+
+.container {
+    width: 380px;
+    padding: 30px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    text-align: center;
+    z-index: 2;
+    animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0; transform: translateY(20px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+h1 {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+p {
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+input::placeholder {
+    color: rgba(255,255,255,0.5);
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff2e63, #ff6b6b);
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-weight: 500;
+}
+
+button:hover {
+    transform: scale(1.03);
+    box-shadow: 0 10px 25px rgba(255, 46, 99, 0.4);
+}
+
+.result {
+    margin-top: 15px;
+    font-size: 13px;
+    color: #7CFF6B;
+}
+
+.bad {
+    color: #ff6b6b;
+}
+
+.loader {
+    margin-top: 10px;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: none;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+</style>
+</head>
+
+<body>
+
+<div class="glow"></div>
+<div class="glow2"></div>
+
+<div class="container">
+    <h1>⚡ YouTube Converter</h1>
+    <p>MP3 / MP4 letöltés demo felület</p>
+
+    <input type="text" id="url" placeholder="YouTube link beillesztése...">
+
+    <select id="format">
+        <option value="mp3">🎵 MP3 (audio)</option>
+        <option value="mp4">🎬 MP4 (video)</option>
+    </select>
+
+    <button onclick="convert()">Konvertálás</button>
+
+    <div class="loader" id="loader"></div>
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+function convert() {
+    const url = document.getElementById("url").value;
+    const format = document.getElementById("format").value;
+    const result = document.getElementById("result");
+    const loader = document.getElementById("loader");
+
+    result.innerHTML = "";
+    loader.style.display = "block";
+
+    if (!url.includes("youtube.com") && !url.includes("youtu.be")) {
+        loader.style.display = "none";
+        result.innerHTML = "❌ Hibás YouTube link";
+        result.classList.add("bad");
+        return;
+    }
+
+    setTimeout(() => {
+        loader.style.display = "none";
+        result.classList.remove("bad");
+        result.innerHTML = `✅ Kész! (${format.toUpperCase()}) letöltés előkészítve`;
+    }, 1800);
+}
+</script>
+
+</body>
+</html>
